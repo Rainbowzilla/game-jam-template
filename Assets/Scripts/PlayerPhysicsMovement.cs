@@ -16,25 +16,31 @@ public class PlayerPhysicsMovement : NetworkBehaviour
         if (asServer)
             return;
 
+        //All clients set it to kinematic, so only the server runs physics!
         rb.isKinematic = !isServer;
-
+        //Only the owner has it enabled, as to run Update()
         enabled = isOwner;
 
+        //Only the owner runs OnTick to send input to the server
         if (isOwner)
         {
             networkManager.onTick += OnTick;
         }
+        Debug.Log($"{name} | isOwner: {isOwner} | enabled: {enabled}");
     }
 
     protected override void OnDestroy()
     {
         base.OnDestroy();
+
+        //Unsubcribing again for cleanup
         networkManager.onTick -= OnTick;
     }
 
     private void Update()
     {
-        if(Input.GetKeyDown(KeyCode.Space))
+        //We have to store the input to be used during the next tick
+        if (Input.GetKeyDown(KeyCode.Space))
         {
             _willJump = true;
         }
@@ -42,26 +48,27 @@ public class PlayerPhysicsMovement : NetworkBehaviour
 
     private void OnTick(bool asServer)
     {
+        //In case of a host setup, we don't want this to run twice.
         if (asServer)
             return;
 
-
-
+        //We generate the input struct that will be sent to the server
         var input = new InputData()
         {
-            input = new Vector2(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical")),
+            movement = new Vector2(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical")),
             jump = _willJump
         };
 
         _willJump = false;
 
+        //We send the input to the server
         Move(input);
     }
 
     [ServerRpc]
     private void Move(InputData inputData)
     {
-        var movement = new Vector3(inputData.input.x, 0, inputData.input.y) * moveForce;
+        var movement = new Vector3(inputData.movement.x, 0, inputData.movement.y) * moveForce;
         
         rb.AddForce(movement);
         
@@ -70,6 +77,8 @@ public class PlayerPhysicsMovement : NetworkBehaviour
     }
     private void OnCollisionEnter(Collision other)
     {
+        //Other than the if-statement here, this is single-player code from the
+        //perspective of the server
         if (!isServer)
             return;
 
@@ -82,7 +91,7 @@ public class PlayerPhysicsMovement : NetworkBehaviour
 
     private struct InputData
     {
-        public Vector2 input;
+        public Vector2 movement;
         public bool jump;
     }
 }

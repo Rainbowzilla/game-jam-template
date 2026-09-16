@@ -5,17 +5,11 @@ public class RotatingRoom : NetworkBehaviour
 {
     [SerializeField] private float rotationSpeed;
 
-    private void FixedUpdate()
+    private void Update()
     {
         if (!isServer)
             return;
 
-        Rotate_Observer(Time.deltaTime * -rotationSpeed);
-    }
-
-    [ObserversRpc]
-    private void Rotate_Observer(float speed)
-    {
-        transform.Rotate(0, 0, speed);
+        transform.Rotate(0, 0, -rotationSpeed * Time.deltaTime);
     }
 }
